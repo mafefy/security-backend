@@ -10,9 +10,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
 import com.lunatech.security.common.error.AuthenticationError;
 import com.lunatech.security.common.error.ExistError;
 import com.lunatech.security.common.error.FullError;
@@ -27,7 +30,7 @@ import com.lunatech.security.user.dao.UserEntity;
 import com.lunatech.security.user.dao.UserInfo;
 import com.lunatech.security.user.dao.UserRepository;
 import com.lunatech.security.user.model.ActivateUserRequest;
-import com.lunatech.security.user.model.AddAdminRequest;
+import com.lunatech.security.user.model.AddAccountRequest;
 import com.lunatech.security.user.model.AuthenticatedResponse;
 import com.lunatech.security.user.model.ChangeAdminPasswordRequest;
 import com.lunatech.security.user.model.ChangePasswordRequest;
@@ -55,23 +58,17 @@ public class UserService {
 	 * 
 	 * @param request contains self registration info
 	 * @return Operation Response
+	 * 
+	 *         public Response clientRegister(UserRegisterRequest request) {
+	 *         Response response = new Response(); if
+	 *         (maximumPendingRegisterations()) { throw new FullError(); } else {
+	 * 
+	 *         if (userExist(request.getCredentials().getName())) { throw new
+	 *         ExistError(); } else { UserEntity user =
+	 *         userBuilder.buildUser(request.getCredentials(), false,
+	 *         UserRole.USER); userRepository.save(user); response.setSuccess(true);
+	 *         } } return response; }
 	 */
-	public Response clientRegister(UserRegisterRequest request) {
-		Response response = new Response();
-		if (maximumPendingRegisterations()) {
-			throw new FullError();
-		} else {
-
-			if (userExist(request.getCredentials().getName())) {
-				throw new ExistError();
-			} else {
-				UserEntity user = userBuilder.buildUser(request.getCredentials(), false, UserRole.USER);
-				userRepository.save(user);
-				response.setSuccess(true);
-			}
-		}
-		return response;
-	}
 
 	private boolean userExist(String name) {
 		return findUser(name) != null;
@@ -104,7 +101,7 @@ public class UserService {
 	 */
 	public void registerDefaultRootAccount() {
 		if (noRootRegisteredYet()) {
-			UserEntity root = userBuilder.buildRoot(rootName, rootPassword);
+			UserEntity root = userBuilder.buildRoot(rootName, systemIdentification, rootPassword);
 			userRepository.save(root);
 			logger.info("System initialize root account for you based on your settings");
 			logger.info("Root name:" + rootName + " password:" + rootPassword);
@@ -118,11 +115,45 @@ public class UserService {
 		return userRepository.countByRole(UserRole.ROOT.role) == 0;
 	}
 
+	@Value("${system.id}")
+	private String systemIdentification;
 	private AuthorizationService authenticationService = new AuthorizationService();
 
-	public AuthenticatedResponse login(LoginRequest req) {
+	/*
+	 * if (isSecuritySystemUser) { if (
+	 * authenticationService.isAllowed(systemIdentification) ) {
+	 * response.setToken(authenticationService.generateToken(getUserInfo(user),
+	 * user.getSystemId())); } else {
+	 * 
+	 * } } else {
+	 */
+	public AuthenticatedResponse loginSecuritySystemUser(LoginRequest req) {
 		AuthenticatedResponse response = new AuthenticatedResponse();
 		UserEntity user = findUser(req.getCredentials());
+		if (authenticateUser(user, req)) {
+			System.out.println("user is authenticated");
+			if (authenticationService.isAllowed(user.getSystemId())) {
+				response.setToken(authenticationService.generateToken(getUserInfo(user), user.getSystemId()));
+				response.setSuccess(true);
+			} else {
+				throw new NotAllowedError("Not a security system user");
+			}
+		}
+		return response;
+	}
+
+	public AuthenticatedResponse loginUser(LoginRequest req) {
+		AuthenticatedResponse response = new AuthenticatedResponse();
+		UserEntity user = findUser(req.getCredentials());
+		if (authenticateUser(user, req)) {
+			response.setUser(user);
+			response.setToken(authenticationService.generateToken(getUserInfo(user), user.getSystemId()));
+			response.setSuccess(true);
+		}
+		return response;
+	}
+
+	private boolean authenticateUser(UserEntity user, LoginRequest req) {
 		if (user != null) {
 			// check user password
 			if (user.getHash().equals(userBuilder.getHash(req.getCredentials()))) {
@@ -130,10 +161,7 @@ public class UserService {
 					if (user.getSuspended()) {
 						throw new NotAllowedError(Violations.LOGIN);
 					} else {
-						response.setUser(user);
-						response.setToken(authenticationService.generateToken(convert(user)));
-						response.setSuccess(true);
-						return response;
+						return true;
 					}
 				} else {
 					throw new NotCompleteError();
@@ -142,15 +170,14 @@ public class UserService {
 		}
 		throw new AuthenticationError();
 	}
-	
 
-	private UserInfo convert(UserEntity entity) {
-			UserInfo info = new UserInfo();
-			info.setId(entity.getId());
-			info.setName(entity.getName());
-			info.setRole(entity.getRole());
-			info.setSuspended(entity.getSuspended());
-			return info;
+	private UserInfo getUserInfo(UserEntity entity) {
+		UserInfo info = new UserInfo();
+		info.setId(entity.getId());
+		info.setName(entity.getName());
+		info.setRole(entity.getRole());
+		info.setSuspended(entity.getSuspended());
+		return info;
 	}
 
 	/**
@@ -194,7 +221,7 @@ public class UserService {
 	 * @param request
 	 * @return
 	 */
-	public Response suspendAdmin(SuspendUserRequest request) {
+	public Response suspendAccount(SuspendUserRequest request) {
 		return editSuspend(request, UserRole.ADMIN);
 	}
 
@@ -214,20 +241,28 @@ public class UserService {
 	}
 
 	/*
-	 * roots only can add admins by credentials
+	 * add system accounts
 	 */
-	public Response addAdmin(AddAdminRequest request) {
+	public Response addAccount(AddAccountRequest request) {
 		Response response = new Response();
-
 		if (userExist(request.getCredentials().getName())) {
 			throw new ExistError();
 		} else {
-			UserEntity user = userBuilder.buildUser(request.getCredentials(), true, UserRole.ADMIN);
+			UserEntity user = userBuilder.buildUser(request.getCredentials(), true, request.getSystemId(),
+					getUserRole(request.getRole()));
 			userRepository.save(user);
 			response.setSuccess(true);
 		}
-
 		return response;
+	}
+
+	private UserRole getUserRole(String roleName) {
+		for (UserRole userRole : UserRole.values()) {
+			if (userRole.role.equals(roleName)) {
+				return userRole;
+			}
+		}
+		return UserRole.USER;
 	}
 
 	/**
@@ -281,8 +316,25 @@ public class UserService {
 		return response;
 	}
 
-	public UsersListResponse adminsList(UsersListRequest request) {
-		return getUsers(request, UserRole.ADMIN);
+	public UsersListResponse getUsers(UsersListRequest request) {
+		UsersListResponse response = new UsersListResponse();
+		Pageable pageable = PageRequest.of(request.getPageIndex(), request.getPageSize(),
+				Sort.by(Direction.DESC, "createdDate"));
+		List<UserEntity> users;
+		if (StringUtils.hasLength(request.getName())) {
+			response.setTotalRecords(userRepository.countBySystemIdContaining(request.getName()));
+			users = userRepository.findBySystemIdContaining(request.getName(), pageable);
+		} else {
+			response.setTotalRecords(userRepository.count());
+			users = userRepository.findAll(pageable).toList();
+		}
+		response.setUsers(users);
+		response.setSuccess(true);
+		return response;
+	}
+
+	public UsersListResponse accountsList(UsersListRequest request) {
+		return getUsers(request);
 	}
 
 	public UsersListResponse usersList(UsersListRequest request) {

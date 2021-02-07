@@ -11,7 +11,6 @@ import lombok.Data;
 @Data
 public class UsersListRequest extends AuthenticatedRequest {
 
-	@NotNull
 	private String name;
 	@NotNull
 	@Min(0)

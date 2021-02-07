@@ -18,6 +18,9 @@ public interface UserRepository extends PagingAndSortingRepository<UserEntity, L
 	public Long countByRole(String role);
 
 	public List<UserEntity> findByRoleAndNameContaining(String role , String name, Pageable pageable);
+	public List<UserEntity> findByNameContaining(String name, Pageable pageable);
+	public List<UserEntity> findBySystemIdContaining(String name, Pageable pageable);
+	public Long countBySystemIdContaining(String name);
 
 }
 

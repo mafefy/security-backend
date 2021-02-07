@@ -71,19 +71,20 @@
 			<version>28.2-jre</version>
 		</dependency>
 
-		<!-- local security libarary repository -->
+		<!-- local security libarary repository 
 		<dependency>
 			<groupId>com.lunatech</groupId>
 			<artifactId>security-library</artifactId>
 			<version>1.0.0</version>
 		</dependency>
-
+		-->
+		
+		<!-- - local security asepects -->
 		<dependency>
-			<groupId>com.auth0</groupId>
-			<artifactId>java-jwt</artifactId>
-			<version>3.12.0</version>
+			<groupId>com.lunatech</groupId>
+			<artifactId>security-aspects</artifactId>
+			<version>1.0.0</version>
 		</dependency>
-
 
 
 	</dependencies>

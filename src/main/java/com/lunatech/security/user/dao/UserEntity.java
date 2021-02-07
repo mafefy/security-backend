@@ -19,6 +19,8 @@ import lombok.EqualsAndHashCode;
 @JsonIgnoreProperties(value  = { "hash" }, allowGetters = false, allowSetters = false)
 public class UserEntity extends UserCommonEntity {
 
+	private String  systemId;
+	
 	/*
 	@OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "user", orphanRemoval = true)
 	private List<ChatEntity> chats = new ArrayList<ChatEntity>();

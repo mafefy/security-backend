@@ -1,5 +1,8 @@
 package com.lunatech.security;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -27,13 +30,17 @@ public class Starter implements CommandLineRunner {
 	private Long expireInterval;
 
 	
+	@Value("${system.allowed.systems}")
+	private String allowedSystems;
+	
 	/**
 	 * 1-create default root user at first time 2-create store directory if not
 	 * created
 	 */
 	@Override
 	public void run(String... args) throws Exception {
-		AuthorizationService.configure(jwtSecret, expireInterval);
+		
+		AuthorizationService.configure(jwtSecret, expireInterval,  Arrays.asList(allowedSystems.split(","))  );
 		userService.registerDefaultRootAccount();
 	}
 

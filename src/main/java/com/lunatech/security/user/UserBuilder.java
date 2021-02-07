@@ -23,24 +23,25 @@ public class UserBuilder {
 		// TODO Auto-generated constructor stub
 	}
 
-	public UserEntity buildUser(Credentials credentials,boolean activated, UserRole userRole ) {
+	public UserEntity buildUser(Credentials credentials,boolean activated,String systemId, UserRole userRole ) {
 		UserEntity newUser = new UserEntity();
 		newUser.setName(credentials.getName());
 		newUser.setHash(getHash(credentials));
-		// must be activated by admin
 		newUser.setActivated(activated);
 		newUser.setSuspended(false);
 		newUser.setRole(userRole.role);
+		newUser.setSystemId(systemId);
 		newUser.updateAuditing();
 		return newUser;
 	}
 	
-		
-	public UserEntity buildRoot(String rootName , String rootPassword) {
+	
+	public UserEntity buildRoot(String rootName ,String systemId, String rootPassword) {
 		UserEntity newUser = new UserEntity();
 		newUser.setName(rootName);
 		newUser.setHash(getHash(rootName, rootPassword));
 		newUser.setRole(UserRole.ROOT.role);
+		newUser.setSystemId(systemId);
 		newUser.setActivated(true);
 		newUser.setSuspended(false);
 		newUser.updateAuditing();

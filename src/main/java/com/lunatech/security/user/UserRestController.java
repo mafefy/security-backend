@@ -12,7 +12,7 @@ import com.lunatech.security.common.model.Response;
 import com.lunatech.security.authorization.SecurityOptions;
 import com.lunatech.security.authorization.UserRole;
 import com.lunatech.security.user.model.ActivateUserRequest;
-import com.lunatech.security.user.model.AddAdminRequest;
+import com.lunatech.security.user.model.AddAccountRequest;
 import com.lunatech.security.user.model.AuthenticatedResponse;
 import com.lunatech.security.user.model.ChangeAdminPasswordRequest;
 import com.lunatech.security.user.model.ChangePasswordRequest;
@@ -32,9 +32,50 @@ public class UserRestController {
 
 	@PostMapping(value = "login")
 	@SecurityOptions(enableBlocking = true, enableAuthorization = false, enableRoles = false)
-	public AuthenticatedResponse login(@Valid @RequestBody LoginRequest request) {
-		return userService.login(request);
+	public AuthenticatedResponse loginSecuritySystemUser(@Valid @RequestBody LoginRequest request) {
+		return userService.loginSecuritySystemUser(request);
 	}
+	
+	
+	@PostMapping(value = "login-user")
+	@SecurityOptions(enableBlocking = true, enableAuthorization = false, enableRoles = false)
+	public AuthenticatedResponse loginUser(@Valid @RequestBody LoginRequest request) {
+		return userService.loginUser(request);
+	}
+	 
+	
+	@PostMapping(value = "suspend-account")
+	@SecurityOptions(roles = { UserRole.ROOT })
+	public Response suspendAccount(@Valid @RequestBody SuspendUserRequest request) {
+		return userService.suspendAccount(request);
+	}
+	
+
+
+	@PostMapping(value = "add-account")
+	@SecurityOptions(roles = { UserRole.ROOT })
+	public Response addAccount(@Valid @RequestBody AddAccountRequest request) {
+		return userService.addAccount(request);
+	}
+	
+	@PostMapping(value = "delete-account")
+	@SecurityOptions(roles = { UserRole.ROOT} )
+	public Response suspendUser(@Valid @RequestBody DeleteUserRequest request) {
+		return userService.deleteUser(request);
+	}
+
+	@PostMapping(value = "change-admin-password")
+	@SecurityOptions(roles = { UserRole.ROOT} )
+	public Response changeAdminPassword(@Valid @RequestBody ChangeAdminPasswordRequest request) {
+		return userService.changeAdminPassword(request);
+	}
+
+	@PostMapping(value = "accounts-list")
+	@SecurityOptions(roles = { UserRole.ROOT })
+	public UsersListResponse accountsList(@Valid @RequestBody UsersListRequest request) {
+		return userService.accountsList(request);
+	}
+	
 
 	/*
 	 * 
@@ -64,43 +105,8 @@ public class UserRestController {
 
 	*/
 
-	@PostMapping(value = "suspend-admin")
-	@SecurityOptions(roles = { UserRole.ROOT })
-	public Response suspendAdmin(@Valid @RequestBody SuspendUserRequest request) {
-		return userService.suspendAdmin(request);
-	}
-	
 
-
-	@PostMapping(value = "add-admin")
-	@SecurityOptions(roles = { UserRole.ROOT })
-	public Response addAdmin(@Valid @RequestBody AddAdminRequest request) {
-		return userService.addAdmin(request);
-	}
-	
-	@PostMapping(value = "delete-admin")
-	@SecurityOptions(roles = { UserRole.ROOT} )
-	public Response suspendUser(@Valid @RequestBody DeleteUserRequest request) {
-		return userService.deleteUser(request);
-	}
-
-	@PostMapping(value = "change-admin-password")
-	@SecurityOptions(roles = { UserRole.ROOT} )
-	public Response changeAdminPassword(@Valid @RequestBody ChangeAdminPasswordRequest request) {
-		return userService.changeAdminPassword(request);
-	}
-
-	@PostMapping(value = "admins-list")
-	@SecurityOptions(roles = { UserRole.ROOT })
-	public UsersListResponse adminsList(@Valid @RequestBody UsersListRequest request) {
-		return userService.adminsList(request);
-	}
 
 	
 
-	@GetMapping(value = "test")
-	public String test() {
-
-		return "yepy";
-	}
 }
